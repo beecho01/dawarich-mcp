@@ -6,7 +6,7 @@
 # Base images are pinned by tag (uv, python). Add (multi-arch index) digests for extra
 # reproducibility; Dependabot (.github/dependabot.yml) proposes updates to the FROM lines.
 
-FROM ghcr.io/astral-sh/uv:0.13.6 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.9 AS uv
 FROM python:3.13-slim-trixie AS python
 
 # ---- build: resolve exactly what uv.lock pins (hash-checked) into a venv -------------------------
