@@ -1,0 +1,9 @@
+# dockerised
+.env
+secrets/
+*.pyc
+.git
+.github
+tests/
+.venv
+uv.lock.bak

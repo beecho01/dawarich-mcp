@@ -1,0 +1,75 @@
+# dawarich-mcp: hardened read-only MCP server for a self-hosted Dawarich instance.
+#
+#   mkdir -p secrets && printf '%s' 'YOUR-DAWARICH-API-KEY' > secrets/dawarich_api_key
+#   cp .env.example .env                        # then edit DAWARICH_HOST_HEADER etc.
+#   docker compose run --rm --no-deps mcp gen-token --label openwebui   # put the hash in .env
+#   docker compose up -d --build
+#
+# The example below does NOT publish any host port: OpenWebUI reaches the server
+# container-to-container on open-webui_net. To expose it, add a loopback ports
+# mapping ("127.0.0.1:8000:8000") and put a TLS-terminating reverse proxy in front.
+
+name: dawarich-mcp
+
+services:
+  mcp:
+    container_name: dawarich-mcp
+    hostname: dawarich-mcp
+    image: ${MCP_IMAGE:-dawarich-mcp:local}
+    build: .  # used by `docker compose up --build`
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    environment:
+      DAWARICH_MCP_TRANSPORT: http
+      DAWARICH_MCP_HOST: 0.0.0.0
+      # Upstream instance. The API key is a Docker secret (file mounted at /run/secrets),
+      # so it is not in `docker inspect` or the process environment.
+      DAWARICH_BASE_URL: ${DAWARICH_BASE_URL:-http://dawarich-app-1:3000}
+      DAWARICH_API_KEY_FILE: /run/secrets/dawarich_api_key
+      # Rails (production) rejects untrusted Host headers. If you reach Dawarich by
+      # container IP/name but it expects a proxy hostname, set these two:
+      DAWARICH_HOST_HEADER: ${DAWARICH_HOST_HEADER:-}
+      DAWARICH_FORWARDED_PROTO: ${DAWARICH_FORWARDED_PROTO:-}
+      # Bearer tokens (hashes only). Required for HTTP: the server refuses to start without auth.
+      DAWARICH_MCP_AUTH_TOKEN_HASHES: ${DAWARICH_MCP_AUTH_TOKEN_HASHES:-}
+      # OAuth resource-server mode instead of static tokens (see README):
+      DAWARICH_MCP_OAUTH_ISSUER: ${DAWARICH_MCP_OAUTH_ISSUER:-}
+      DAWARICH_MCP_OAUTH_JWKS_URL: ${DAWARICH_MCP_OAUTH_JWKS_URL:-}
+      DAWARICH_MCP_OAUTH_RESOURCE_URL: ${DAWARICH_MCP_OAUTH_RESOURCE_URL:-}
+      DAWARICH_MCP_OAUTH_REQUIRED_SCOPES: ${DAWARICH_MCP_OAUTH_REQUIRED_SCOPES:-}
+      # DNS-rebinding protection: Host/Origin values clients may use to reach this server.
+      # For OpenWebUI container-to-container use the container name:
+      DAWARICH_MCP_ALLOWED_HOSTS: ${DAWARICH_MCP_ALLOWED_HOSTS:-dawarich-mcp:*,127.0.0.1:*,localhost:*}
+      DAWARICH_MCP_ALLOWED_ORIGINS: ${DAWARICH_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:*,http://localhost:*}
+      DAWARICH_MCP_RATE_LIMIT_PER_MINUTE: ${DAWARICH_MCP_RATE_LIMIT_PER_MINUTE:-60}
+      DAWARICH_MCP_LOG_LEVEL: ${DAWARICH_MCP_LOG_LEVEL:-INFO}
+    secrets:
+      - dawarich_api_key
+    networks:
+      - open-webui_net
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    # Each tool call fetches one bounded page; responses are small.
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "dawarich-mcp", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+secrets:
+  dawarich_api_key:
+    file: ./secrets/dawarich_api_key
+
+networks:
+  open-webui_net:
+    external: true

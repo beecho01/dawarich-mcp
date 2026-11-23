@@ -1,0 +1,65 @@
+[project]
+name = "dawarich-mcp"
+version = "1.0.0"
+description = "Hardened read-only MCP server for a self-hosted Dawarich instance: where-was-I, visits, distance stats, yearly insights and digests, geofence events, visited countries and cities."
+authors = [{ name = "James Beeching" }]
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+keywords = ["mcp", "dawarich", "location-history", "gps", "self-hosted"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    # 2.x implements MCP 2026-07-28 (stateless requests, server/discover) and still serves older clients.
+    "mcp>=2.3.0,<3",
+    "anyio>=4.9",
+    # The HTTP client the SDK itself uses; reusing it keeps the dependency tree small.
+    "httpx2>=2.16",
+    "pydantic>=2.12",
+    "pyjwt[crypto]>=2.10.1",
+    "starlette>=0.48",
+    "uvicorn>=0.31.1",
+]
+
+[project.scripts]
+dawarich-mcp = "dawarich_mcp.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/beecho01/dawarich-mcp"
+Dawarich = "https://dawarich.com"
+MCPSpec = "https://modelcontextprotocol.io/specification/2026-07-28"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.7,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "dawarich_mcp"
+module-root = "src"
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S", "RUF"]
+ignore = ["S310", "S603"]  # urllib is operator-configured; argparse-invoked tools are ours
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "E501", "S105", "S106"]  # asserts and long fixture literals are fine in tests
+"scripts/*" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

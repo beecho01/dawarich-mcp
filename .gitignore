@@ -1,0 +1,18 @@
+# secrets and local state
+.env
+secrets/
+.mcp-bearer-*
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+
+# editors
+.idea/
+.vscode/
+*.swp
